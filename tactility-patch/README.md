@@ -37,6 +37,29 @@ idf.py build flash
 Poi genera l'SDK locale con `python Buildscripts/release-current.py` e compila l'app con
 `TACTILITY_SDK_PATH=/percorso/Tactility/release ./tt app build -a esp32s3` (vedi il README principale).
 
+## Fork e pull request
+
+- Fork con la patch applicata: branch [`usb-hid-fido-mode` di RobertoD91/Tactility](https://github.com/RobertoD91/Tactility/tree/usb-hid-fido-mode).
+- Testo pronto per la pull request upstream: [PR.md](PR.md).
+
+## Badge RomHack Camp 2026
+
+Il firmware del [badge RHC2026](https://github.com/cybersaiyanIT/rhc2026-badge) è una copia modificata di
+Tactility 0.8.0-dev (ESP-IDF 5.5.2, esp_tinyusb 1.7.6) in `firmware/tactility`. Il driver USB HID è identico a
+quello upstream, quindi la patch `0001` si applica anche lì (saltando le modifiche ai device upstream);
+[`rhc2026-badge/0002-romhack2026-badge-usb-fido-hid.patch`](rhc2026-badge/0002-romhack2026-badge-usb-fido-hid.patch)
+aggiunge il nodo `usbdevice0`/`usbdevicehid0` e `hardware.tinyUsbHid=true` al device `romhack2026-badge`:
+
+```sh
+cd rhc2026-badge
+git apply --directory=firmware/tactility --exclude='firmware/tactility/Devices/*' \
+    /percorso/passkey-tactility/tactility-patch/0001-Add-USB-HID-FIDO-mode-for-CTAPHID-authenticators.patch
+git apply /percorso/passkey-tactility/tactility-patch/rhc2026-badge/0002-romhack2026-badge-usb-fido-hid.patch
+firmware/build_all.sh
+```
+
+L'app usa solo widget esportati anche da quel firmware; verificato con il confronto dei simboli dell'ELF.
+
 ## Note di progettazione
 
 - Il buffer dell'endpoint OUT di TinyUSB (`CFG_TUD_HID_EP_BUFSIZE`) vale 64 byte con la

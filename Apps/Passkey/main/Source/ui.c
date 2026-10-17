@@ -3,11 +3,10 @@
 
 #include "usb_transport.h"
 
+// Only widgets that every Tactility 0.8.0-dev build exports are used (plain LVGL plus the toolbar),
+// so the app also runs on derived firmwares such as the RomHack Camp 2026 badge.
 #include <lvgl/fonts.h>
 #include <lvgl/lvgl.h>
-#include <lvgl/theme.h>
-#include <lvgl/widgets/card.h>
-#include <lvgl/widgets/list.h>
 #include <lvgl/widgets/toolbar.h>
 #include <tactility/log.h>
 
@@ -99,7 +98,8 @@ static lv_obj_t* add_button(lv_obj_t* parent, const char* text, lv_event_cb_t ca
 
 void passkey_ui_create(lv_obj_t* parent, void* user_data) {
     struct PasskeyApp* app = (struct PasskeyApp*)user_data;
-    bool compact = lvgl_theme_is_compact();
+    // Small displays (240x240 rounds, the 80x160 dongle) get tighter spacing and a smaller status font.
+    bool compact = lv_display_get_horizontal_resolution(NULL) <= 240 && lv_display_get_vertical_resolution(NULL) <= 240;
 
     lv_obj_remove_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
@@ -127,9 +127,11 @@ void passkey_ui_create(lv_obj_t* parent, void* user_data) {
         lv_obj_set_style_text_font(app->status_label, lvgl_get_text_font(FONT_SIZE_SMALL), LV_STATE_DEFAULT);
     }
 
-    app->prompt_card = lvgl_card_create(content);
-    lv_obj_set_width(app->prompt_card, LV_PCT(100));
+    app->prompt_card = lv_obj_create(content);
+    lv_obj_set_size(app->prompt_card, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(app->prompt_card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(app->prompt_card, compact ? 4 : 8, LV_PART_MAIN);
+    lv_obj_remove_flag(app->prompt_card, LV_OBJ_FLAG_SCROLLABLE);
     app->prompt_label = lv_label_create(app->prompt_card);
     lv_obj_set_width(app->prompt_label, LV_PCT(100));
     lv_label_set_long_mode(app->prompt_label, LV_LABEL_LONG_WRAP);
@@ -145,7 +147,7 @@ void passkey_ui_create(lv_obj_t* parent, void* user_data) {
     app->deny_button = add_button(buttons, LV_SYMBOL_CLOSE " Deny", on_deny, app);
     lv_obj_add_flag(app->prompt_card, LV_OBJ_FLAG_HIDDEN);
 
-    app->credential_list = lvgl_list_create(content);
+    app->credential_list = lv_list_create(content);
     lv_obj_set_width(app->credential_list, LV_PCT(100));
     lv_obj_set_flex_grow(app->credential_list, 1);
 
@@ -278,9 +280,9 @@ static void refresh_credentials(struct PasskeyApp* app) {
     app->credentials_dirty = false;
     lv_obj_clean(app->credential_list);
     if (status.resident_count == 0) {
-        lvgl_list_add_text(app->credential_list, "No passkeys stored on this key");
+        lv_list_add_text(app->credential_list, "No passkeys stored on this key");
     } else {
-        lvgl_list_add_text(app->credential_list, "Passkeys (tap to delete)");
+        lv_list_add_text(app->credential_list, "Passkeys (tap to delete)");
     }
     for (size_t i = 0; i < status.resident_count && i < MAX_LISTED_CREDENTIALS; i++) {
         FidoCredentialInfo info;
@@ -289,14 +291,14 @@ static void refresh_credentials(struct PasskeyApp* app) {
         }
         char text[FIDO_MAX_RP_ID_LEN + FIDO_MAX_USER_NAME_LEN + 4];
         snprintf(text, sizeof(text), "%s\n%s", info.rp_id, info.user_name[0] ? info.user_name : "(no user name)");
-        lv_obj_t* button = lvgl_list_add_button(app->credential_list, LV_SYMBOL_KEYBOARD, text);
+        lv_obj_t* button = lv_list_add_button(app->credential_list, LV_SYMBOL_KEYBOARD, text);
         lv_obj_set_user_data(button, (void*)(uintptr_t)i);
         lv_obj_add_event_cb(button, on_credential_clicked, LV_EVENT_SHORT_CLICKED, app);
     }
     if (status.resident_count > MAX_LISTED_CREDENTIALS) {
-        lvgl_list_add_text(app->credential_list, "...");
+        lv_list_add_text(app->credential_list, "...");
     }
-    lv_obj_t* reset = lvgl_list_add_button(app->credential_list, LV_SYMBOL_TRASH, "Factory reset");
+    lv_obj_t* reset = lv_list_add_button(app->credential_list, LV_SYMBOL_TRASH, "Factory reset");
     lv_obj_add_event_cb(reset, on_reset_clicked, LV_EVENT_SHORT_CLICKED, app);
 }
 
