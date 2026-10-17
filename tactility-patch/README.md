@@ -20,7 +20,9 @@ aggiunge questo al kernel e al driver ESP32, senza toccare le modalità esistent
 | `Devices/*/` (ESP32-S3 con `usbdevice0`) | nodo `usbdevicehid0` nel devicetree e `hardware.tinyUsbHid=true` in `device.properties` |
 
 La patch è stata generata contro il commit `76434d5bcd6246def97f16f153a0ae159d7145e4` di
-[TactilityProject/Tactility](https://github.com/TactilityProject/Tactility) (ramo `main`, SDK `0.8.0-dev`).
+[TactilityProject/Tactility](https://github.com/TactilityProject/Tactility) (ramo `main`, SDK `0.8.0-dev`)
+e il firmware così modificato compila con ESP-IDF 6.1 (verificato per `lilygo-tdongle-s3`).
+Non è ancora stata provata su hardware.
 
 ## Applicarla
 

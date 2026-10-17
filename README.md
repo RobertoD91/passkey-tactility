@@ -7,8 +7,10 @@ browser e sistemi operativi, con conferma della presenza utente sullo schermo de
 
 > **Stato**: software sperimentale, non certificato FIDO e non sottoposto ad audit di sicurezza.
 > Il core è verificato su Linux contro [python-fido2](https://github.com/Yubico/python-fido2)
-> (libreria di riferimento di Yubico) con 50 test automatici; l'ELF per ESP32-S3 compila con
-> l'SDK ufficiale. Non è ancora stato provato su una scheda fisica: le segnalazioni sono benvenute.
+> (libreria di riferimento di Yubico) con 50 test automatici; l'app compila per ESP32-S3 ed
+> ESP32-P4 con l'SDK ufficiale 0.8.0-dev e tutti i simboli che importa sono esportati dal
+> firmware patchato, che a sua volta compila (ESP-IDF 6.1, T-Dongle S3). Non è ancora stata
+> provata su una scheda fisica: le segnalazioni sono benvenute.
 
 ## Cosa fa
 

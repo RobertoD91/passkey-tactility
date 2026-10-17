@@ -230,8 +230,12 @@ static void refresh_prompt(struct PasskeyApp* app) {
 }
 
 static void refresh_status(struct PasskeyApp* app) {
-    FidoStatus status;
-    bool have_status = fido_get_status(&status);
+    // While the worker waits for the user it holds the core lock: show the last known status then.
+    static FidoStatus status;
+    static bool have_status = false;
+    if (fido_get_status(&status)) {
+        have_status = true;
+    }
     const char* usb;
     if (!app->usb_started) {
         usb = app->usb_error[0] != '\0' ? app->usb_error : "off (use the switch)";
@@ -253,7 +257,7 @@ static void refresh_status(struct PasskeyApp* app) {
                  app->storage_ok ? "" : "\nStorage: WRITE FAILED, check the SD card",
                  app->wink ? "\nThe host is looking for this key!" : "");
     } else {
-        snprintf(text, sizeof(text), "USB: %s\nBusy...", usb);
+        snprintf(text, sizeof(text), "USB: %s\nStarting...", usb);
     }
     lv_label_set_text(app->status_label, text);
     if (app->usb_switch != NULL) {

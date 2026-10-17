@@ -184,10 +184,13 @@ void fido_on_state_reset(void) {
 
 // ---- UI API ----
 
-#define UI_LOCK_TIMEOUT_MS 500
+// Reads come from the UI task and must not stall it while the worker waits for the user; writes
+// come from the app's own task and can afford to wait a little.
+#define UI_READ_LOCK_TIMEOUT_MS 20
+#define UI_WRITE_LOCK_TIMEOUT_MS 500
 
 bool fido_get_status(FidoStatus* out) {
-    if (!fido_hal_lock(UI_LOCK_TIMEOUT_MS)) {
+    if (!fido_hal_lock(UI_READ_LOCK_TIMEOUT_MS)) {
         return false;
     }
     out->pin_set = fido_store.pin_set;
@@ -199,7 +202,7 @@ bool fido_get_status(FidoStatus* out) {
 }
 
 bool fido_get_resident_credential(size_t index, FidoCredentialInfo* out) {
-    if (!fido_hal_lock(UI_LOCK_TIMEOUT_MS)) {
+    if (!fido_hal_lock(UI_READ_LOCK_TIMEOUT_MS)) {
         return false;
     }
     bool ok = index < fido_store.resident_count;
@@ -217,7 +220,7 @@ bool fido_get_resident_credential(size_t index, FidoCredentialInfo* out) {
 }
 
 bool fido_delete_resident_credential(size_t index) {
-    if (!fido_hal_lock(UI_LOCK_TIMEOUT_MS)) {
+    if (!fido_hal_lock(UI_WRITE_LOCK_TIMEOUT_MS)) {
         return false;
     }
     bool ok = index < fido_store.resident_count;
@@ -233,7 +236,7 @@ bool fido_delete_resident_credential(size_t index) {
 }
 
 bool fido_factory_reset(void) {
-    if (!fido_hal_lock(UI_LOCK_TIMEOUT_MS)) {
+    if (!fido_hal_lock(UI_WRITE_LOCK_TIMEOUT_MS)) {
         return false;
     }
     bool ok = store_reset();
