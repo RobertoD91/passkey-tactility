@@ -12,10 +12,18 @@ index 3bfda74..df056f5 100644
  display.size=2.4"
  display.shape=rectangle
 diff --git a/firmware/tactility/Devices/romhack2026-badge/romhack,1.0.dts b/firmware/tactility/Devices/romhack2026-badge/romhack,1.0.dts
-index 7364d93..c316ac3 100644
+index 7364d93..07b788e 100644
 --- a/firmware/tactility/Devices/romhack2026-badge/romhack,1.0.dts
 +++ b/firmware/tactility/Devices/romhack2026-badge/romhack,1.0.dts
-@@ -167,5 +167,11 @@
+@@ -6,6 +6,7 @@
+ #include <tactility/bindings/esp32_i2s.h>
+ #include <tactility/bindings/esp32_sdmmc.h>
+ #include <tactility/bindings/esp32_spi.h>
++#include <tactility/bindings/esp32_usbdevice.h>
+ #include <tactility/bindings/esp32_pwm_ledc.h>
+ #include <tactility/bindings/gpio_hog.h>
+ #include <tactility/bindings/pwm_backlight.h>
+@@ -167,5 +168,11 @@
  		pullups;
  	};
  

@@ -58,7 +58,29 @@ git apply /percorso/passkey-tactility/tactility-patch/rhc2026-badge/0002-romhack
 firmware/build_all.sh
 ```
 
-L'app usa solo widget esportati anche da quel firmware; verificato con il confronto dei simboli dell'ELF.
+Il Tactility del badge è precedente allo strumento `tt`: le sue app hanno un manifest in formato `0.2`
+e il pacchetto contiene `elf/esp32s3.elf`. L'app per il badge si compila contro l'SDK generato da quel
+firmware, con ESP-IDF 5.5:
+
+```sh
+cd rhc2026-badge/firmware/tactility
+ESP_IDF_VERSION=5.5 python Buildscripts/release-sdk-esp32.py release/TactilitySDK
+# lo script cerca LVGL come componente gestito e lo salta senza errori: va copiato a mano
+mkdir -p release/TactilitySDK/Libraries/lvgl/binary
+cp build/esp-idf/lvgl/liblvgl.a release/TactilitySDK/Libraries/lvgl/binary/
+cd /percorso/passkey-tactility
+Scripts/build-rhc2026-badge-app.sh /percorso/rhc2026-badge/firmware/tactility/release/TactilitySDK
+# → build/rhc2026-badge/robertod.passkey.app
+```
+
+Verifiche fatte: il firmware del badge con le due patch compila con ESP-IDF 5.5.2, l'app compila contro
+il suo SDK e tutti i simboli che importa sono esportati da quel firmware.
+
+Build automatiche:
+- firmware completo (Tactility + Retro-Go, immagine da 16 MB per l'offset `0x0`) e SDK: workflow
+  "RHC2026 badge firmware (FIDO)" sul branch
+  [`rhc2026-badge-fido` del fork](https://github.com/RobertoD91/Tactility/tree/rhc2026-badge-fido);
+- app per il badge: workflow "Passkey for the RHC2026 badge" di questo repository.
 
 ## Note di progettazione
 

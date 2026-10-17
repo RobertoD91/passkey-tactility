@@ -70,6 +70,12 @@ Serve un SoC con USB OTG: **ESP32-S3** (T-Deck, Cardputer, CoreS3, T-Dongle S3, 
 ...) o **ESP32-P4** (M5Stack Tab5). ESP32 classico e ESP32-C6 non hanno USB device. La porta USB
 deve essere quella OTG collegata al PHY nativo (la stessa usata da Tactility per la mass storage).
 
+**Badge RomHack Camp 2026**: il suo firmware contiene una copia più vecchia di Tactility (ESP-IDF 5.5,
+formato app `0.2`), quindi ha una build dedicata. Il firmware con la patch esce dal workflow del
+branch [`rhc2026-badge-fido`](https://github.com/RobertoD91/Tactility/tree/rhc2026-badge-fido) del
+fork di Tactility, l'app dal workflow "Passkey for the RHC2026 badge" di questo repository (oppure
+in locale con `Scripts/build-rhc2026-badge-app.sh`). Dettagli in [tactility-patch/README.md](tactility-patch/README.md).
+
 ## Compilare e installare
 
 ### 1. Firmware Tactility con la patch

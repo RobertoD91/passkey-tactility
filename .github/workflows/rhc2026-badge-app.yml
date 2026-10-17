@@ -1,0 +1,82 @@
+name: Passkey for the RHC2026 badge
+# Builds the Passkey app for the RomHack Camp 2026 badge. The badge firmware carries its own,
+# older Tactility (ESP-IDF 5.5.2), so the app is built against the TactilitySDK of that firmware
+# with the FIDO patches applied, and packaged in the badge's app format.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "Apps/Passkey/**"
+      - "tactility-patch/**"
+      - "Scripts/build-rhc2026-badge-app.sh"
+      - ".github/workflows/rhc2026-badge-app.yml"
+
+permissions:
+  contents: read
+
+env:
+  BADGE_REF: c6b737580ab28d368f7eb10c641e6739cd2bf639
+  IDF_IMAGE: docker.io/espressif/idf:v5.5.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: passkey
+          persist-credentials: false
+
+      - name: Checkout the badge firmware
+        uses: actions/checkout@v4
+        with:
+          repository: CyberSaiyanIT/rhc2026-badge
+          ref: ${{ env.BADGE_REF }}
+          path: badge
+          persist-credentials: false
+
+      - name: Initialize the submodules Tactility needs
+        working-directory: badge
+        run: |
+          git submodule update --init --depth 1 \
+            firmware/tactility/Libraries/lvgl \
+            firmware/tactility/Libraries/minitar/minitar \
+            firmware/tactility/Libraries/cJSON/cJSON \
+            firmware/tactility/Libraries/esp_epaper \
+            firmware/tactility/Libraries/esp-adf
+          git -C firmware/tactility/Libraries/esp-adf submodule update --init --depth 1 components/esp-adf-libs
+
+      - name: Apply the FIDO patches
+        working-directory: badge
+        run: |
+          git apply --verbose --directory=firmware/tactility --exclude='firmware/tactility/Devices/*' \
+            ../passkey/tactility-patch/0001-Add-USB-HID-FIDO-mode-for-CTAPHID-authenticators.patch
+          git apply --verbose ../passkey/tactility-patch/rhc2026-badge/0002-romhack2026-badge-usb-fido-hid.patch
+
+      - name: Build the badge Tactility, its SDK and the app
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$PWD":/work -w /work "$IDF_IMAGE" bash -c '
+              set -e
+              pip install -q --target /tmp/py lark
+              export PYTHONPATH=/tmp/py:${PYTHONPATH:-}
+              cd /work/badge/firmware/tactility
+              python device.py romhack2026-badge
+              idf.py build
+              ESP_IDF_VERSION=5.5 python Buildscripts/release-sdk-esp32.py release/TactilitySDK
+              # The release script looks for LVGL as the managed component and skips it silently.
+              if [ ! -f release/TactilitySDK/Libraries/lvgl/binary/liblvgl.a ]; then
+                mkdir -p release/TactilitySDK/Libraries/lvgl/binary
+                cp build/esp-idf/lvgl/liblvgl.a release/TactilitySDK/Libraries/lvgl/binary/liblvgl.a
+              fi
+              cd /work/passkey
+              Scripts/build-rhc2026-badge-app.sh /work/badge/firmware/tactility/release/TactilitySDK
+            '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: passkey-rhc2026-badge
+          path: passkey/build/rhc2026-badge/robertod.passkey.app
+          retention-days: 30
