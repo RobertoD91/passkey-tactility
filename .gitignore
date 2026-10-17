@@ -77,3 +77,16 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux
 
+
+### Project ###
+build/
+Apps/*/build/
+Apps/*/sdkconfig
+Apps/*/sdkconfig.old
+Apps/*/dependencies.lock
+Apps/*/managed_components/
+tests/host/build/
+__pycache__/
+.pytest_cache/
+*.app
+.tactility/

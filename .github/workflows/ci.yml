@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    name: Core tests on Linux (python-fido2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          python -m pip install --upgrade pip
+          python -m pip install fido2 pytest
+      - name: Build the host authenticator (with sanitizers)
+        run: |
+          cmake -S tests/host -B tests/host/build -G Ninja -DPASSKEY_SANITIZE=ON
+          ninja -C tests/host/build
+      - name: Run the tests
+        run: python -m pytest -q tests/python
+
+  build-app:
+    name: Build Tactility app (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [esp32s3, esp32p4]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with the Tactility SDK
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v6.1
+          path: .
+          # The action presets IDF_TARGET=esp32; tt selects the target itself.
+          command: 'export IDF_TARGET= && cd Apps/Passkey && python ../../tt.py app build -a ${{ matrix.platform }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: passkey-${{ matrix.platform }}
+          path: Apps/Passkey/build/*.app
+          retention-days: 30

@@ -1,0 +1,1183 @@
+From f27f163bc6cbf60a9ce6971494f5ae4d441db00a Mon Sep 17 00:00:00 2001
+From: Roberto <RobertoD91@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 10:13:38 +0000
+Subject: [PATCH] Add USB HID FIDO mode for CTAPHID authenticators
+
+Adds USB_HID_DEVICE_MODE_FIDO to the USB HID device driver: the FIDO
+Alliance report map (usage page 0xF1D0) with 64-byte IN and OUT reports
+and an interrupt OUT endpoint, send_raw() to send IN reports and
+set_raw_report_callback() to receive OUT reports. An app can present the
+device to a host as a FIDO2/U2F security key over CTAPHID.
+
+Enables the usbdevicehid0 child on the ESP32-S3 devices that already
+have a usbdevice0 node, so the HID class driver is built for them.
+
+Co-Authored-By: Claude Mythos 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01UAYrYnr6tvN7SQKimwgNxa
+---
+ Devices/cl32-v02-v03/cl32-v02-v03.dts         |  4 +
+ Devices/cl32-v02-v03/device.properties        |  1 +
+ Devices/cl32-v04/cl32-v04.dts                 |  4 +
+ Devices/cl32-v04/device.properties            |  1 +
+ .../device.properties                         |  1 +
+ .../elecrow,crowpanel-advance-28.dts          |  4 +
+ .../device.properties                         |  1 +
+ .../elecrow,crowpanel-advance-35.dts          |  4 +
+ .../device.properties                         |  1 +
+ .../elecrow,crowpanel-advance-50.dts          |  4 +
+ .../device.properties                         |  1 +
+ .../elecrow,crowpanel-basic-50.dts            |  4 +
+ Devices/es3c28p/device.properties             |  1 +
+ Devices/es3c28p/es3c28p.dts                   |  4 +
+ .../heltec-wifi-lora-32-v3/device.properties  |  1 +
+ .../heltec,wifi-lora-32-v3.dts                |  4 +
+ Devices/lilygo-tdeck-max/device.properties    |  1 +
+ Devices/lilygo-tdeck-max/lilygo,tdeck-max.dts |  4 +
+ Devices/lilygo-tdeck-plus/device.properties   |  1 +
+ .../lilygo-tdeck-plus/lilygo,tdeck-plus.dts   |  4 +
+ Devices/lilygo-tdeck-pro/device.properties    |  1 +
+ Devices/lilygo-tdeck-pro/lilygo,tdeck-pro.dts |  4 +
+ Devices/lilygo-tdeck/device.properties        |  1 +
+ Devices/lilygo-tdeck/lilygo,tdeck.dts         |  4 +
+ Devices/lilygo-tdisplay-s3/device.properties  |  1 +
+ .../lilygo-tdisplay-s3/lilygo,tdisplay-s3.dts |  4 +
+ Devices/lilygo-tdongle-s3/device.properties   |  1 +
+ .../lilygo-tdongle-s3/lilygo,tdongle-s3.dts   |  4 +
+ .../device.properties                         |  1 +
+ .../lilygo,tembed-cc1101-plus.dts             |  4 +
+ .../lilygo-tembed-cc1101/device.properties    |  1 +
+ .../lilygo,tembed-cc1101.dts                  |  4 +
+ Devices/lilygo-thmi/device.properties         |  1 +
+ Devices/lilygo-thmi/lilygo,thmi.dts           |  4 +
+ Devices/lilygo-tlora-pager/device.properties  |  1 +
+ .../lilygo-tlora-pager/lilygo,tlora-pager.dts |  4 +
+ .../m5stack-cardputer-adv/device.properties   |  1 +
+ .../m5stack,cardputer-adv.dts                 |  4 +
+ Devices/m5stack-cardputer/device.properties   |  1 +
+ .../m5stack-cardputer/m5stack,cardputer.dts   |  4 +
+ Devices/m5stack-cores3/device.properties      |  1 +
+ Devices/m5stack-cores3/m5stack,cores3.dts     |  4 +
+ Devices/m5stack-stackchan/device.properties   |  1 +
+ .../m5stack-stackchan/m5stack,stackchan.dts   |  4 +
+ Devices/m5stack-sticks3/device.properties     |  1 +
+ Devices/m5stack-sticks3/m5stack,sticks3.dts   |  4 +
+ .../device.properties                         |  1 +
+ .../seeed,wio-tracker-l2-pro.dts              |  4 +
+ .../waveshare-esp32-s3-geek/device.properties |  1 +
+ .../waveshare,esp32-s3-geek.dts               |  4 +
+ .../device.properties                         |  1 +
+ .../waveshare,s3-touch-amoled-206.dts         |  4 +
+ .../device.properties                         |  1 +
+ .../waveshare,s3-touch-lcd-147.dts            |  4 +
+ .../device.properties                         |  1 +
+ .../waveshare,s3-touch-lcd-43.dts             |  4 +
+ .../device.properties                         |  1 +
+ .../wireless-tag,wt32-sc01-plus.dts           |  4 +
+ .../drivers/hid_report_descriptors.h          |  5 ++
+ .../source/drivers/hid_report_descriptors.cpp | 22 +++++
+ .../drivers/usb/esp32_usb_hid_device.cpp      | 85 ++++++++++++++++---
+ .../tactility/drivers/usb_hid_device.h        | 41 +++++++++
+ .../source/drivers/usb_hid_device.cpp         |  8 ++
+ TactilityKernel/source/symbols.c              |  2 +
+ 64 files changed, 297 insertions(+), 11 deletions(-)
+
+diff --git a/Devices/cl32-v02-v03/cl32-v02-v03.dts b/Devices/cl32-v02-v03/cl32-v02-v03.dts
+index 7290f8c..e3d4d4c 100644
+--- a/Devices/cl32-v02-v03/cl32-v02-v03.dts
++++ b/Devices/cl32-v02-v03/cl32-v02-v03.dts
+@@ -29,6 +29,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/cl32-v02-v03/device.properties b/Devices/cl32-v02-v03/device.properties
+index 393fd5b..c81c453 100644
+--- a/Devices/cl32-v02-v03/device.properties
++++ b/Devices/cl32-v02-v03/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRamXipDisabled=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ 
+ storage.userDataLocation=SD
+ 
+diff --git a/Devices/cl32-v04/cl32-v04.dts b/Devices/cl32-v04/cl32-v04.dts
+index 8365b15..0908cdf 100644
+--- a/Devices/cl32-v04/cl32-v04.dts
++++ b/Devices/cl32-v04/cl32-v04.dts
+@@ -33,6 +33,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/cl32-v04/device.properties b/Devices/cl32-v04/device.properties
+index 2104eb8..99a3f60 100644
+--- a/Devices/cl32-v04/device.properties
++++ b/Devices/cl32-v04/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRamXipDisabled=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.mesh=true
+ 
+ storage.userDataLocation=SD
+diff --git a/Devices/elecrow-crowpanel-advance-28/device.properties b/Devices/elecrow-crowpanel-advance-28/device.properties
+index 8711bc1..5eb3305 100644
+--- a/Devices/elecrow-crowpanel-advance-28/device.properties
++++ b/Devices/elecrow-crowpanel-advance-28/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/elecrow-crowpanel-advance-28/elecrow,crowpanel-advance-28.dts b/Devices/elecrow-crowpanel-advance-28/elecrow,crowpanel-advance-28.dts
+index d44af8f..5c7dcbe 100644
+--- a/Devices/elecrow-crowpanel-advance-28/elecrow,crowpanel-advance-28.dts
++++ b/Devices/elecrow-crowpanel-advance-28/elecrow,crowpanel-advance-28.dts
+@@ -108,6 +108,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/elecrow-crowpanel-advance-35/device.properties b/Devices/elecrow-crowpanel-advance-35/device.properties
+index e08b73b..f23001e 100644
+--- a/Devices/elecrow-crowpanel-advance-35/device.properties
++++ b/Devices/elecrow-crowpanel-advance-35/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/elecrow-crowpanel-advance-35/elecrow,crowpanel-advance-35.dts b/Devices/elecrow-crowpanel-advance-35/elecrow,crowpanel-advance-35.dts
+index f4f0221..05e11d3 100644
+--- a/Devices/elecrow-crowpanel-advance-35/elecrow,crowpanel-advance-35.dts
++++ b/Devices/elecrow-crowpanel-advance-35/elecrow,crowpanel-advance-35.dts
+@@ -113,6 +113,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/elecrow-crowpanel-advance-50/device.properties b/Devices/elecrow-crowpanel-advance-50/device.properties
+index 78cfc75..7e08969 100644
+--- a/Devices/elecrow-crowpanel-advance-50/device.properties
++++ b/Devices/elecrow-crowpanel-advance-50/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/elecrow-crowpanel-advance-50/elecrow,crowpanel-advance-50.dts b/Devices/elecrow-crowpanel-advance-50/elecrow,crowpanel-advance-50.dts
+index 432dc7a..14914c1 100644
+--- a/Devices/elecrow-crowpanel-advance-50/elecrow,crowpanel-advance-50.dts
++++ b/Devices/elecrow-crowpanel-advance-50/elecrow,crowpanel-advance-50.dts
+@@ -126,6 +126,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/elecrow-crowpanel-basic-50/device.properties b/Devices/elecrow-crowpanel-basic-50/device.properties
+index 060bef5..5291a4d 100644
+--- a/Devices/elecrow-crowpanel-basic-50/device.properties
++++ b/Devices/elecrow-crowpanel-basic-50/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/elecrow-crowpanel-basic-50/elecrow,crowpanel-basic-50.dts b/Devices/elecrow-crowpanel-basic-50/elecrow,crowpanel-basic-50.dts
+index d581bf1..e61b3ba 100644
+--- a/Devices/elecrow-crowpanel-basic-50/elecrow,crowpanel-basic-50.dts
++++ b/Devices/elecrow-crowpanel-basic-50/elecrow,crowpanel-basic-50.dts
+@@ -122,6 +122,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/es3c28p/device.properties b/Devices/es3c28p/device.properties
+index 83462a1..4274f7b 100644
+--- a/Devices/es3c28p/device.properties
++++ b/Devices/es3c28p/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.esptoolFlashFreq=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.bluetooth=true
+ 
+ display.size=2.8"
+diff --git a/Devices/es3c28p/es3c28p.dts b/Devices/es3c28p/es3c28p.dts
+index d861d69..9b9871c 100644
+--- a/Devices/es3c28p/es3c28p.dts
++++ b/Devices/es3c28p/es3c28p.dts
+@@ -142,6 +142,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/heltec-wifi-lora-32-v3/device.properties b/Devices/heltec-wifi-lora-32-v3/device.properties
+index b045274..70f50bd 100644
+--- a/Devices/heltec-wifi-lora-32-v3/device.properties
++++ b/Devices/heltec-wifi-lora-32-v3/device.properties
+@@ -7,6 +7,7 @@ hardware.target=ESP32S3
+ hardware.flashSize=8MB
+ hardware.spiRam=false
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/heltec-wifi-lora-32-v3/heltec,wifi-lora-32-v3.dts b/Devices/heltec-wifi-lora-32-v3/heltec,wifi-lora-32-v3.dts
+index 2b67188..dca5205 100644
+--- a/Devices/heltec-wifi-lora-32-v3/heltec,wifi-lora-32-v3.dts
++++ b/Devices/heltec-wifi-lora-32-v3/heltec,wifi-lora-32-v3.dts
+@@ -139,6 +139,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdeck-max/device.properties b/Devices/lilygo-tdeck-max/device.properties
+index 483c246..f11be91 100644
+--- a/Devices/lilygo-tdeck-max/device.properties
++++ b/Devices/lilygo-tdeck-max/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=AUTO
+ hardware.spiRamSpeed=80M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ hardware.mesh=true
+diff --git a/Devices/lilygo-tdeck-max/lilygo,tdeck-max.dts b/Devices/lilygo-tdeck-max/lilygo,tdeck-max.dts
+index aa8030d..5e27326 100644
+--- a/Devices/lilygo-tdeck-max/lilygo,tdeck-max.dts
++++ b/Devices/lilygo-tdeck-max/lilygo,tdeck-max.dts
+@@ -204,6 +204,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdeck-plus/device.properties b/Devices/lilygo-tdeck-plus/device.properties
+index 1d38fb4..75337e1 100644
+--- a/Devices/lilygo-tdeck-plus/device.properties
++++ b/Devices/lilygo-tdeck-plus/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.spiRamXipDisabled=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ hardware.mesh=true
+diff --git a/Devices/lilygo-tdeck-plus/lilygo,tdeck-plus.dts b/Devices/lilygo-tdeck-plus/lilygo,tdeck-plus.dts
+index c7962ac..055f96c 100644
+--- a/Devices/lilygo-tdeck-plus/lilygo,tdeck-plus.dts
++++ b/Devices/lilygo-tdeck-plus/lilygo,tdeck-plus.dts
+@@ -215,6 +215,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdeck-pro/device.properties b/Devices/lilygo-tdeck-pro/device.properties
+index 7f5cd16..205373c 100644
+--- a/Devices/lilygo-tdeck-pro/device.properties
++++ b/Devices/lilygo-tdeck-pro/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=AUTO
+ hardware.spiRamSpeed=80M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ hardware.mesh=true
+diff --git a/Devices/lilygo-tdeck-pro/lilygo,tdeck-pro.dts b/Devices/lilygo-tdeck-pro/lilygo,tdeck-pro.dts
+index 68d5049..bdc33d0 100644
+--- a/Devices/lilygo-tdeck-pro/lilygo,tdeck-pro.dts
++++ b/Devices/lilygo-tdeck-pro/lilygo,tdeck-pro.dts
+@@ -154,6 +154,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdeck/device.properties b/Devices/lilygo-tdeck/device.properties
+index 44053d4..010c6bb 100644
+--- a/Devices/lilygo-tdeck/device.properties
++++ b/Devices/lilygo-tdeck/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.spiRamXipDisabled=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-tdeck/lilygo,tdeck.dts b/Devices/lilygo-tdeck/lilygo,tdeck.dts
+index 5a53d6c..d7a342c 100644
+--- a/Devices/lilygo-tdeck/lilygo,tdeck.dts
++++ b/Devices/lilygo-tdeck/lilygo,tdeck.dts
+@@ -195,6 +195,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdisplay-s3/device.properties b/Devices/lilygo-tdisplay-s3/device.properties
+index b2ee6a8..d647ee0 100644
+--- a/Devices/lilygo-tdisplay-s3/device.properties
++++ b/Devices/lilygo-tdisplay-s3/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-tdisplay-s3/lilygo,tdisplay-s3.dts b/Devices/lilygo-tdisplay-s3/lilygo,tdisplay-s3.dts
+index 86654e4..2a8f067 100644
+--- a/Devices/lilygo-tdisplay-s3/lilygo,tdisplay-s3.dts
++++ b/Devices/lilygo-tdisplay-s3/lilygo,tdisplay-s3.dts
+@@ -98,6 +98,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tdongle-s3/device.properties b/Devices/lilygo-tdongle-s3/device.properties
+index 2b76058..517795c 100644
+--- a/Devices/lilygo-tdongle-s3/device.properties
++++ b/Devices/lilygo-tdongle-s3/device.properties
+@@ -7,6 +7,7 @@ hardware.target=ESP32S3
+ hardware.flashSize=16MB
+ hardware.spiRam=false
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-tdongle-s3/lilygo,tdongle-s3.dts b/Devices/lilygo-tdongle-s3/lilygo,tdongle-s3.dts
+index d647c35..aa4f6dc 100644
+--- a/Devices/lilygo-tdongle-s3/lilygo,tdongle-s3.dts
++++ b/Devices/lilygo-tdongle-s3/lilygo,tdongle-s3.dts
+@@ -98,6 +98,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tembed-cc1101-plus/device.properties b/Devices/lilygo-tembed-cc1101-plus/device.properties
+index 9c60d97..621e1aa 100644
+--- a/Devices/lilygo-tembed-cc1101-plus/device.properties
++++ b/Devices/lilygo-tembed-cc1101-plus/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=80M
+ hardware.spiRamXipDisabled=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-tembed-cc1101-plus/lilygo,tembed-cc1101-plus.dts b/Devices/lilygo-tembed-cc1101-plus/lilygo,tembed-cc1101-plus.dts
+index 6aec002..f1f608b 100644
+--- a/Devices/lilygo-tembed-cc1101-plus/lilygo,tembed-cc1101-plus.dts
++++ b/Devices/lilygo-tembed-cc1101-plus/lilygo,tembed-cc1101-plus.dts
+@@ -175,6 +175,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tembed-cc1101/device.properties b/Devices/lilygo-tembed-cc1101/device.properties
+index 3f92c27..f24fa1c 100644
+--- a/Devices/lilygo-tembed-cc1101/device.properties
++++ b/Devices/lilygo-tembed-cc1101/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=80M
+ hardware.spiRamXipDisabled=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-tembed-cc1101/lilygo,tembed-cc1101.dts b/Devices/lilygo-tembed-cc1101/lilygo,tembed-cc1101.dts
+index a8ef0be..02bdb61 100644
+--- a/Devices/lilygo-tembed-cc1101/lilygo,tembed-cc1101.dts
++++ b/Devices/lilygo-tembed-cc1101/lilygo,tembed-cc1101.dts
+@@ -181,6 +181,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-thmi/device.properties b/Devices/lilygo-thmi/device.properties
+index 2148355..2ed5b91 100644
+--- a/Devices/lilygo-thmi/device.properties
++++ b/Devices/lilygo-thmi/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/lilygo-thmi/lilygo,thmi.dts b/Devices/lilygo-thmi/lilygo,thmi.dts
+index 5ad46f0..4053c42 100644
+--- a/Devices/lilygo-thmi/lilygo,thmi.dts
++++ b/Devices/lilygo-thmi/lilygo,thmi.dts
+@@ -133,6 +133,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/lilygo-tlora-pager/device.properties b/Devices/lilygo-tlora-pager/device.properties
+index bd4b609..d44c223 100644
+--- a/Devices/lilygo-tlora-pager/device.properties
++++ b/Devices/lilygo-tlora-pager/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=AUTO
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=40M
+ hardware.bluetooth=true
+ hardware.mesh=true
+diff --git a/Devices/lilygo-tlora-pager/lilygo,tlora-pager.dts b/Devices/lilygo-tlora-pager/lilygo,tlora-pager.dts
+index e7f7e94..8e928af 100644
+--- a/Devices/lilygo-tlora-pager/lilygo,tlora-pager.dts
++++ b/Devices/lilygo-tlora-pager/lilygo,tlora-pager.dts
+@@ -242,6 +242,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/m5stack-cardputer-adv/device.properties b/Devices/m5stack-cardputer-adv/device.properties
+index 0e862cd..e1124de 100644
+--- a/Devices/m5stack-cardputer-adv/device.properties
++++ b/Devices/m5stack-cardputer-adv/device.properties
+@@ -5,6 +5,7 @@ hardware.target=ESP32S3
+ hardware.flashSize=8MB
+ hardware.spiRam=false
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/m5stack-cardputer-adv/m5stack,cardputer-adv.dts b/Devices/m5stack-cardputer-adv/m5stack,cardputer-adv.dts
+index ae258ae..a83b7f8 100644
+--- a/Devices/m5stack-cardputer-adv/m5stack,cardputer-adv.dts
++++ b/Devices/m5stack-cardputer-adv/m5stack,cardputer-adv.dts
+@@ -151,6 +151,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/m5stack-cardputer/device.properties b/Devices/m5stack-cardputer/device.properties
+index 2abe104..bae16ad 100644
+--- a/Devices/m5stack-cardputer/device.properties
++++ b/Devices/m5stack-cardputer/device.properties
+@@ -5,6 +5,7 @@ hardware.target=ESP32S3
+ hardware.flashSize=8MB
+ hardware.spiRam=false
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/m5stack-cardputer/m5stack,cardputer.dts b/Devices/m5stack-cardputer/m5stack,cardputer.dts
+index 9339b7f..523961f 100644
+--- a/Devices/m5stack-cardputer/m5stack,cardputer.dts
++++ b/Devices/m5stack-cardputer/m5stack,cardputer.dts
+@@ -166,6 +166,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/m5stack-cores3/device.properties b/Devices/m5stack-cores3/device.properties
+index 987227f..dd5cddf 100644
+--- a/Devices/m5stack-cores3/device.properties
++++ b/Devices/m5stack-cores3/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=QUAD
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/m5stack-cores3/m5stack,cores3.dts b/Devices/m5stack-cores3/m5stack,cores3.dts
+index 150ac1f..b43de72 100644
+--- a/Devices/m5stack-cores3/m5stack,cores3.dts
++++ b/Devices/m5stack-cores3/m5stack,cores3.dts
+@@ -231,6 +231,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/m5stack-stackchan/device.properties b/Devices/m5stack-stackchan/device.properties
+index 055f473..d4283ac 100644
+--- a/Devices/m5stack-stackchan/device.properties
++++ b/Devices/m5stack-stackchan/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=QUAD
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/m5stack-stackchan/m5stack,stackchan.dts b/Devices/m5stack-stackchan/m5stack,stackchan.dts
+index 7920f95..214b349 100644
+--- a/Devices/m5stack-stackchan/m5stack,stackchan.dts
++++ b/Devices/m5stack-stackchan/m5stack,stackchan.dts
+@@ -263,6 +263,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/m5stack-sticks3/device.properties b/Devices/m5stack-sticks3/device.properties
+index d1009d0..bde0843 100644
+--- a/Devices/m5stack-sticks3/device.properties
++++ b/Devices/m5stack-sticks3/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=80M
+ hardware.esptoolFlashFreq=80M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.bluetooth=true
+ 
+ storage.userDataLocation=Internal
+diff --git a/Devices/m5stack-sticks3/m5stack,sticks3.dts b/Devices/m5stack-sticks3/m5stack,sticks3.dts
+index d654575..d9d21a4 100644
+--- a/Devices/m5stack-sticks3/m5stack,sticks3.dts
++++ b/Devices/m5stack-sticks3/m5stack,sticks3.dts
+@@ -137,6 +137,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/seeed-wio-tracker-l2-pro/device.properties b/Devices/seeed-wio-tracker-l2-pro/device.properties
+index 27fd101..452f7ba 100644
+--- a/Devices/seeed-wio-tracker-l2-pro/device.properties
++++ b/Devices/seeed-wio-tracker-l2-pro/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=80M
+ hardware.esptoolFlashFreq=80M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.bluetooth=true
+ hardware.mesh=true
+ 
+diff --git a/Devices/seeed-wio-tracker-l2-pro/seeed,wio-tracker-l2-pro.dts b/Devices/seeed-wio-tracker-l2-pro/seeed,wio-tracker-l2-pro.dts
+index 925fb16..9fac959 100644
+--- a/Devices/seeed-wio-tracker-l2-pro/seeed,wio-tracker-l2-pro.dts
++++ b/Devices/seeed-wio-tracker-l2-pro/seeed,wio-tracker-l2-pro.dts
+@@ -263,6 +263,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/waveshare-esp32-s3-geek/device.properties b/Devices/waveshare-esp32-s3-geek/device.properties
+index 010bf73..9cedbeb 100644
+--- a/Devices/waveshare-esp32-s3-geek/device.properties
++++ b/Devices/waveshare-esp32-s3-geek/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRamMode=QUAD
+ hardware.spiRamSpeed=120M
+ hardware.spiRamXipDisabled=true
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/waveshare-esp32-s3-geek/waveshare,esp32-s3-geek.dts b/Devices/waveshare-esp32-s3-geek/waveshare,esp32-s3-geek.dts
+index 5c5cdba..ff24541 100644
+--- a/Devices/waveshare-esp32-s3-geek/waveshare,esp32-s3-geek.dts
++++ b/Devices/waveshare-esp32-s3-geek/waveshare,esp32-s3-geek.dts
+@@ -106,6 +106,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/waveshare-s3-touch-amoled-206/device.properties b/Devices/waveshare-s3-touch-amoled-206/device.properties
+index a5861b6..edd1903 100644
+--- a/Devices/waveshare-s3-touch-amoled-206/device.properties
++++ b/Devices/waveshare-s3-touch-amoled-206/device.properties
+@@ -10,6 +10,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/waveshare-s3-touch-amoled-206/waveshare,s3-touch-amoled-206.dts b/Devices/waveshare-s3-touch-amoled-206/waveshare,s3-touch-amoled-206.dts
+index ded1a12..7801f6b 100644
+--- a/Devices/waveshare-s3-touch-amoled-206/waveshare,s3-touch-amoled-206.dts
++++ b/Devices/waveshare-s3-touch-amoled-206/waveshare,s3-touch-amoled-206.dts
+@@ -172,6 +172,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/waveshare-s3-touch-lcd-147/device.properties b/Devices/waveshare-s3-touch-lcd-147/device.properties
+index a57fdff..3d4af06 100644
+--- a/Devices/waveshare-s3-touch-lcd-147/device.properties
++++ b/Devices/waveshare-s3-touch-lcd-147/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/waveshare-s3-touch-lcd-147/waveshare,s3-touch-lcd-147.dts b/Devices/waveshare-s3-touch-lcd-147/waveshare,s3-touch-lcd-147.dts
+index df7bfeb..3e2d985 100644
+--- a/Devices/waveshare-s3-touch-lcd-147/waveshare,s3-touch-lcd-147.dts
++++ b/Devices/waveshare-s3-touch-lcd-147/waveshare,s3-touch-lcd-147.dts
+@@ -110,6 +110,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/waveshare-s3-touch-lcd-43/device.properties b/Devices/waveshare-s3-touch-lcd-43/device.properties
+index 5a54c63..b65d430 100644
+--- a/Devices/waveshare-s3-touch-lcd-43/device.properties
++++ b/Devices/waveshare-s3-touch-lcd-43/device.properties
+@@ -8,6 +8,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=OCT
+ hardware.spiRamSpeed=120M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=120M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/waveshare-s3-touch-lcd-43/waveshare,s3-touch-lcd-43.dts b/Devices/waveshare-s3-touch-lcd-43/waveshare,s3-touch-lcd-43.dts
+index bd6c62b..7b90c22 100644
+--- a/Devices/waveshare-s3-touch-lcd-43/waveshare,s3-touch-lcd-43.dts
++++ b/Devices/waveshare-s3-touch-lcd-43/waveshare,s3-touch-lcd-43.dts
+@@ -129,6 +129,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Devices/wireless-tag-wt32-sc01-plus/device.properties b/Devices/wireless-tag-wt32-sc01-plus/device.properties
+index 439aafa..16b9d75 100644
+--- a/Devices/wireless-tag-wt32-sc01-plus/device.properties
++++ b/Devices/wireless-tag-wt32-sc01-plus/device.properties
+@@ -7,6 +7,7 @@ hardware.spiRam=true
+ hardware.spiRamMode=QUAD
+ hardware.spiRamSpeed=80M
+ hardware.tinyUsbMsc=true
++hardware.tinyUsbHid=true
+ hardware.esptoolFlashFreq=80M
+ hardware.bluetooth=true
+ 
+diff --git a/Devices/wireless-tag-wt32-sc01-plus/wireless-tag,wt32-sc01-plus.dts b/Devices/wireless-tag-wt32-sc01-plus/wireless-tag,wt32-sc01-plus.dts
+index bcc9742..496c1e1 100644
+--- a/Devices/wireless-tag-wt32-sc01-plus/wireless-tag,wt32-sc01-plus.dts
++++ b/Devices/wireless-tag-wt32-sc01-plus/wireless-tag,wt32-sc01-plus.dts
+@@ -108,6 +108,10 @@
+ 	usbdevice0 {
+ 		compatible = "espressif,esp32-usbdevice";
+ 
++		usbdevicehid0 {
++			compatible = "espressif,esp32-usbdevice-hid";
++		};
++
+ 		usbdevicemsc0 {
+ 			compatible = "espressif,esp32-usbdevice-msc";
+ 		};
+diff --git a/Platforms/platform-esp32/include/tactility/drivers/hid_report_descriptors.h b/Platforms/platform-esp32/include/tactility/drivers/hid_report_descriptors.h
+index 6829986..f2842b4 100644
+--- a/Platforms/platform-esp32/include/tactility/drivers/hid_report_descriptors.h
++++ b/Platforms/platform-esp32/include/tactility/drivers/hid_report_descriptors.h
+@@ -41,6 +41,11 @@ extern const size_t hid_report_map_keyboard_consumer_mouse_len;
+ extern const uint8_t hid_report_map_gamepad[];
+ extern const size_t hid_report_map_gamepad_len;
+ 
++/** FIDO authenticator (CTAPHID): usage page 0xF1D0, usage 0x01, one 64-byte IN report and one
++ *  64-byte OUT report without report IDs, as the FIDO CTAP specification's HID transport defines. */
++extern const uint8_t hid_report_map_fido[];
++extern const size_t hid_report_map_fido_len;
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/Platforms/platform-esp32/source/drivers/hid_report_descriptors.cpp b/Platforms/platform-esp32/source/drivers/hid_report_descriptors.cpp
+index 0fa08e7..504316f 100644
+--- a/Platforms/platform-esp32/source/drivers/hid_report_descriptors.cpp
++++ b/Platforms/platform-esp32/source/drivers/hid_report_descriptors.cpp
+@@ -222,4 +222,26 @@ const uint8_t hid_report_map_gamepad[] = {
+ };
+ const size_t hid_report_map_gamepad_len = sizeof(hid_report_map_gamepad);
+ 
++// FIDO authenticator (CTAPHID), no report IDs: the layout the FIDO CTAP specification's HID
++// transport requires, so hosts recognize the interface as a security key by its usage page.
++const uint8_t hid_report_map_fido[] = {
++    0x06, 0xD0, 0xF1,  // Usage Page: FIDO Alliance (0xF1D0)
++    0x09, 0x01,        // Usage: CTAPHID
++    0xA1, 0x01,        // Collection: Application
++    0x09, 0x20,        // Usage: Input Report Data
++    0x15, 0x00,        // Logical Minimum: 0
++    0x26, 0xFF, 0x00,  // Logical Maximum: 255
++    0x75, 0x08,        // Report Size: 8
++    0x95, 0x40,        // Report Count: 64
++    0x81, 0x02,        // Input: Data, Variable, Absolute
++    0x09, 0x21,        // Usage: Output Report Data
++    0x15, 0x00,        // Logical Minimum: 0
++    0x26, 0xFF, 0x00,  // Logical Maximum: 255
++    0x75, 0x08,        // Report Size: 8
++    0x95, 0x40,        // Report Count: 64
++    0x91, 0x02,        // Output: Data, Variable, Absolute
++    0xC0,              // End Collection
++};
++const size_t hid_report_map_fido_len = sizeof(hid_report_map_fido);
++
+ } // extern "C"
+diff --git a/Platforms/platform-esp32/source/drivers/usb/esp32_usb_hid_device.cpp b/Platforms/platform-esp32/source/drivers/usb/esp32_usb_hid_device.cpp
+index fe9147c..5c7c921 100644
+--- a/Platforms/platform-esp32/source/drivers/usb/esp32_usb_hid_device.cpp
++++ b/Platforms/platform-esp32/source/drivers/usb/esp32_usb_hid_device.cpp
+@@ -44,6 +44,7 @@ static const uint8_t* active_report_map() {
+         case USB_HID_DEVICE_MODE_MOUSE:          return hid_report_map_mouse;
+         case USB_HID_DEVICE_MODE_KEYBOARD_MOUSE:  return hid_report_map_keyboard_consumer_mouse;
+         case USB_HID_DEVICE_MODE_GAMEPAD:        return hid_report_map_gamepad;
++        case USB_HID_DEVICE_MODE_FIDO:           return hid_report_map_fido;
+         default:                                 return hid_report_map_keyboard_consumer; // KEYBOARD
+     }
+ }
+@@ -53,6 +54,7 @@ static size_t active_report_map_len() {
+         case USB_HID_DEVICE_MODE_MOUSE:          return hid_report_map_mouse_len;
+         case USB_HID_DEVICE_MODE_KEYBOARD_MOUSE:  return hid_report_map_keyboard_consumer_mouse_len;
+         case USB_HID_DEVICE_MODE_GAMEPAD:        return hid_report_map_gamepad_len;
++        case USB_HID_DEVICE_MODE_FIDO:           return hid_report_map_fido_len;
+         default:                                 return hid_report_map_keyboard_consumer_len;
+     }
+ }
+@@ -69,6 +71,7 @@ static const char* default_name_for_mode(enum UsbHidDeviceMode mode) {
+         case USB_HID_DEVICE_MODE_MOUSE:          return "Tactility Mouse";
+         case USB_HID_DEVICE_MODE_KEYBOARD_MOUSE:  return "Tactility Keyboard+Mouse";
+         case USB_HID_DEVICE_MODE_GAMEPAD:        return "Tactility Gamepad";
++        case USB_HID_DEVICE_MODE_FIDO:           return "Tactility FIDO";
+         default:                                 return "Tactility Keyboard"; // KEYBOARD
+     }
+ }
+@@ -78,6 +81,7 @@ static uint16_t product_id_for_mode(enum UsbHidDeviceMode mode) {
+         case USB_HID_DEVICE_MODE_MOUSE:          return 0x4006;
+         case USB_HID_DEVICE_MODE_KEYBOARD_MOUSE:  return 0x4007;
+         case USB_HID_DEVICE_MODE_GAMEPAD:        return 0x4008;
++        case USB_HID_DEVICE_MODE_FIDO:           return 0x4009;
+         default:                                 return 0x4004; // KEYBOARD (unchanged - existing PID)
+     }
+ }
+@@ -128,8 +132,15 @@ static const char* hid_string_descriptor[] = {
+ // Built fresh in hid_device_start(), sized for the active mode's report map. TinyUSB only reads
+ // this once during tinyusb_driver_install() (inside claim()), so it's safe to mutate between
+ // claim sessions (i.e. stop() + start() with a different mode) as long as it's finalized before
+-// claim() is called.
+-static uint8_t hid_configuration_descriptor[TUD_HID_DESC_LEN];
++// claim() is called. FIDO mode adds an OUT endpoint, which makes its descriptor the largest.
++static uint8_t hid_configuration_descriptor[TUD_HID_INOUT_DESC_LEN];
++static size_t hid_configuration_descriptor_len = 0;
++
++// Raw OUT report receiver for USB_HID_DEVICE_MODE_FIDO, see usb_hid_device_set_raw_report_callback().
++static UsbHidDeviceRawReportCallback raw_report_callback = nullptr;
++static void* raw_report_context = nullptr;
++
++static constexpr size_t FIDO_REPORT_SIZE = 64;
+ 
+ // ---- TinyUSB HID callbacks (required by the TinyUSB HID class driver) ----
+ 
+@@ -148,7 +159,17 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
+ 
+ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
+                            uint8_t const* buffer, uint16_t bufsize) {
+-    (void)instance; (void)report_id; (void)report_type; (void)buffer; (void)bufsize;
++    (void)instance; (void)report_id;
++    // A report on the interrupt OUT endpoint arrives as HID_REPORT_TYPE_INVALID, one sent with a
++    // SET_REPORT control request as HID_REPORT_TYPE_OUTPUT. CTAPHID hosts use the former.
++    if (active_mode == USB_HID_DEVICE_MODE_FIDO && (report_type == HID_REPORT_TYPE_INVALID || report_type == HID_REPORT_TYPE_OUTPUT)) {
++        UsbHidDeviceRawReportCallback callback = raw_report_callback;
++        if (callback != nullptr) {
++            callback(buffer, bufsize, raw_report_context);
++        }
++        return;
++    }
++    (void)buffer; (void)bufsize;
+     // LED state (caps/num/scroll lock) - not currently surfaced to callers.
+ }
+ 
+@@ -174,9 +195,13 @@ static error_t hid_device_start(struct Device* device, enum UsbHidDeviceMode mod
+         return begin_result;
+     }
+ 
++    // FIDO is the only mode that receives reports on an interrupt OUT endpoint; the others only
++    // need the interrupt IN endpoint and take SET_REPORT control requests for output reports.
++    const uint8_t out_endpoint_count = mode == USB_HID_DEVICE_MODE_FIDO ? 1 : 0;
++
+     struct UsbInterfaceAllocation alloc;
+     error_t alloc_result = usb_device_controller_allocate_interfaces(controller, /*interface_count=*/1,
+-                                                                       /*in_endpoint_count=*/1, /*out_endpoint_count=*/0, &alloc);
++                                                                       /*in_endpoint_count=*/1, out_endpoint_count, &alloc);
+     if (alloc_result != ERROR_NONE) {
+         return alloc_result;
+     }
+@@ -187,21 +212,31 @@ static error_t hid_device_start(struct Device* device, enum UsbHidDeviceMode mod
+     active_mode = mode;
+     build_hid_device_descriptor(mode);
+ 
+-    const uint8_t hid_bytes[] = {
+-        TUD_HID_DESCRIPTOR(alloc.first_interface_number, 4, HID_ITF_PROTOCOL_NONE,
+-                            active_report_map_len(), alloc.first_in_endpoint, 16, 10),
+-    };
+-    memcpy(hid_configuration_descriptor, hid_bytes, sizeof(hid_bytes));
++    if (mode == USB_HID_DEVICE_MODE_FIDO) {
++        const uint8_t hid_bytes[] = {
++            TUD_HID_INOUT_DESCRIPTOR(alloc.first_interface_number, 4, HID_ITF_PROTOCOL_NONE,
++                                     active_report_map_len(), alloc.first_out_endpoint, alloc.first_in_endpoint, FIDO_REPORT_SIZE, 5),
++        };
++        memcpy(hid_configuration_descriptor, hid_bytes, sizeof(hid_bytes));
++        hid_configuration_descriptor_len = sizeof(hid_bytes);
++    } else {
++        const uint8_t hid_bytes[] = {
++            TUD_HID_DESCRIPTOR(alloc.first_interface_number, 4, HID_ITF_PROTOCOL_NONE,
++                                active_report_map_len(), alloc.first_in_endpoint, 16, 10),
++        };
++        memcpy(hid_configuration_descriptor, hid_bytes, sizeof(hid_bytes));
++        hid_configuration_descriptor_len = sizeof(hid_bytes);
++    }
+ 
+     struct UsbDeviceClaimConfig claim_config = {};
+     claim_config.device_descriptor = &hid_device_descriptor;
+     claim_config.string_descriptor = hid_string_descriptor;
+     claim_config.string_descriptor_count = sizeof(hid_string_descriptor) / sizeof(hid_string_descriptor[0]);
+     claim_config.primary.descriptor_bytes = hid_configuration_descriptor;
+-    claim_config.primary.descriptor_bytes_len = sizeof(hid_configuration_descriptor);
++    claim_config.primary.descriptor_bytes_len = hid_configuration_descriptor_len;
+     claim_config.primary.interface_count = 1;
+     claim_config.primary.in_endpoint_count = 1;
+-    claim_config.primary.out_endpoint_count = 0;
++    claim_config.primary.out_endpoint_count = out_endpoint_count;
+ 
+     return usb_device_controller_claim(controller, USB_DEVICE_CLASS_HID_KEYBOARD, &claim_config);
+ }
+@@ -291,6 +326,32 @@ static error_t hid_device_send_gamepad(struct Device* device, const uint8_t* rep
+     return hid_send_report(REPORT_ID_GAMEPAD, buf, sizeof(buf));
+ }
+ 
++static error_t hid_device_send_raw(struct Device* device, const uint8_t* report, size_t len) {
++    (void)device;
++    if (active_mode != USB_HID_DEVICE_MODE_FIDO) {
++        return ERROR_NOT_SUPPORTED;
++    }
++    // Report ID 0 makes TinyUSB send the bytes as-is, without a leading ID byte. Always a full
++    // 64-byte report: CTAPHID packets are fixed-size and hosts ignore the padding.
++    uint8_t buf[FIDO_REPORT_SIZE] = {};
++    memcpy(buf, report, len < sizeof(buf) ? len : sizeof(buf));
++    return hid_send_report(0, buf, sizeof(buf));
++}
++
++static error_t hid_device_set_raw_report_callback(struct Device* device, UsbHidDeviceRawReportCallback callback, void* context) {
++    (void)device;
++    // Context first, then the callback: tud_hid_set_report_cb() reads the callback once and
++    // then its context, so a receiver never sees the other receiver's context.
++    if (callback == nullptr) {
++        raw_report_callback = nullptr;
++        raw_report_context = nullptr;
++    } else {
++        raw_report_context = context;
++        raw_report_callback = callback;
++    }
++    return ERROR_NONE;
++}
++
+ static bool hid_device_is_connected(struct Device* device) {
+     (void)device;
+     // tud_hid_ready() deliberately NOT included here: it reflects whether the endpoint is idle
+@@ -313,6 +374,8 @@ extern const UsbHidDeviceApi esp32_usb_hid_device_api = {
+     .send_mouse    = hid_device_send_mouse,
+     .send_gamepad  = hid_device_send_gamepad,
+     .is_connected  = hid_device_is_connected,
++    .send_raw      = hid_device_send_raw,
++    .set_raw_report_callback = hid_device_set_raw_report_callback,
+ };
+ 
+ // ---- Driver lifecycle ----
+diff --git a/TactilityKernel/include/tactility/drivers/usb_hid_device.h b/TactilityKernel/include/tactility/drivers/usb_hid_device.h
+index 1f1a16f..ae45b6e 100644
+--- a/TactilityKernel/include/tactility/drivers/usb_hid_device.h
++++ b/TactilityKernel/include/tactility/drivers/usb_hid_device.h
+@@ -30,8 +30,24 @@ enum UsbHidDeviceMode {
+     USB_HID_DEVICE_MODE_KEYBOARD_MOUSE,
+     /** Gamepad (report ID 1, 8 bytes: 5-byte axes, 1-byte hat/dpad, 2-byte buttons[10] padded). */
+     USB_HID_DEVICE_MODE_GAMEPAD,
++    /**
++     * FIDO authenticator (CTAPHID): FIDO Alliance usage page 0xF1D0, one 64-byte raw IN report
++     * and one 64-byte raw OUT report, no report IDs. Reports are exchanged with send_raw() and
++     * set_raw_report_callback(); the send_* report helpers of the other modes don't apply.
++     */
++    USB_HID_DEVICE_MODE_FIDO,
+ };
+ 
++/**
++ * Receives a raw OUT report from the host in USB_HID_DEVICE_MODE_FIDO.
++ * @warning Called on the USB stack's task. @a report is only valid during the call: copy it out
++ * and return quickly (e.g. push it onto a queue that the app's own task drains).
++ * @param[in] report the report bytes
++ * @param[in] len number of bytes (64 for a CTAPHID packet)
++ * @param[in] context the context given to set_raw_report_callback()
++ */
++typedef void (*UsbHidDeviceRawReportCallback)(const uint8_t* report, size_t len, void* context);
++
+ /**
+  * USB HID device profile API (present this device as a USB HID peripheral to a host).
+  * This API is exposed by a child device of the USB device controller.
+@@ -114,6 +130,29 @@ struct UsbHidDeviceApi {
+      * @return true when a USB host has mounted the device and the HID interface is ready
+      */
+     bool (*is_connected)(struct Device* device);
++
++    /**
++     * Send a raw IN report (no report ID). Only valid in USB_HID_DEVICE_MODE_FIDO. Blocks briefly
++     * while the endpoint finishes the previous report, so back-to-back packets of one CTAPHID
++     * message can be sent in a loop.
++     * @param[in] device the HID device child device
++     * @param[in] report pointer to the report bytes
++     * @param[in] len number of bytes (up to 64; shorter reports are zero-padded to 64)
++     * @retval ERROR_NOT_SUPPORTED when not in USB_HID_DEVICE_MODE_FIDO
++     * @retval ERROR_INVALID_STATE when no host is connected
++     * @retval ERROR_NONE on success
++     */
++    error_t (*send_raw)(struct Device* device, const uint8_t* report, size_t len);
++
++    /**
++     * Register the receiver of raw OUT reports for USB_HID_DEVICE_MODE_FIDO. Can be called before
++     * or after start(). Pass NULL to unregister; do so before the context is freed.
++     * @param[in] device the HID device child device
++     * @param[in] callback the callback, or NULL
++     * @param[in] context passed to @a callback
++     * @return ERROR_NONE on success
++     */
++    error_t (*set_raw_report_callback)(struct Device* device, UsbHidDeviceRawReportCallback callback, void* context);
+ };
+ 
+ extern const struct DeviceType USB_HID_DEVICE_TYPE;
+@@ -133,6 +172,8 @@ error_t usb_hid_device_send_consumer(struct Device* device, const uint8_t* repor
+ error_t usb_hid_device_send_mouse(struct Device* device, const uint8_t* report, size_t len);
+ error_t usb_hid_device_send_gamepad(struct Device* device, const uint8_t* report, size_t len);
+ bool    usb_hid_device_is_connected(struct Device* device);
++error_t usb_hid_device_send_raw(struct Device* device, const uint8_t* report, size_t len);
++error_t usb_hid_device_set_raw_report_callback(struct Device* device, UsbHidDeviceRawReportCallback callback, void* context);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/TactilityKernel/source/drivers/usb_hid_device.cpp b/TactilityKernel/source/drivers/usb_hid_device.cpp
+index e59d2ef..1a76184 100644
+--- a/TactilityKernel/source/drivers/usb_hid_device.cpp
++++ b/TactilityKernel/source/drivers/usb_hid_device.cpp
+@@ -48,4 +48,12 @@ bool usb_hid_device_is_connected(struct Device* device) {
+     return USB_HID_DEVICE_API(device)->is_connected(device);
+ }
+ 
++error_t usb_hid_device_send_raw(struct Device* device, const uint8_t* report, size_t len) {
++    return USB_HID_DEVICE_API(device)->send_raw(device, report, len);
++}
++
++error_t usb_hid_device_set_raw_report_callback(struct Device* device, UsbHidDeviceRawReportCallback callback, void* context) {
++    return USB_HID_DEVICE_API(device)->set_raw_report_callback(device, callback, context);
++}
++
+ } // extern "C"
+diff --git a/TactilityKernel/source/symbols.c b/TactilityKernel/source/symbols.c
+index f26bea8..62bc5db 100644
+--- a/TactilityKernel/source/symbols.c
++++ b/TactilityKernel/source/symbols.c
+@@ -503,6 +503,8 @@ const struct ModuleSymbol KERNEL_SYMBOLS[] = {
+     DEFINE_MODULE_SYMBOL(usb_hid_device_send_mouse),
+     DEFINE_MODULE_SYMBOL(usb_hid_device_send_gamepad),
+     DEFINE_MODULE_SYMBOL(usb_hid_device_is_connected),
++    DEFINE_MODULE_SYMBOL(usb_hid_device_send_raw),
++    DEFINE_MODULE_SYMBOL(usb_hid_device_set_raw_report_callback),
+     DEFINE_MODULE_SYMBOL(USB_HID_DEVICE_TYPE),
+     // drivers/usb_msc_device
+     DEFINE_MODULE_SYMBOL(usb_msc_device_get),
+-- 
+2.43.0
+
