@@ -136,4 +136,6 @@ Tactility in `firmware/tactility`. Il workflow `rhc2026-badge-app.yml` ne fissa 
 ## Stato
 
 Il core è verificato con python-fido2 (50 test). App e firmware compilano sia per upstream sia per il
-badge. Non c'è ancora nessun test su hardware reale: dillo sempre quando riporti lo stato.
+badge. Su hardware è stata provata solo sul badge RomHack Camp 2026 con Chrome su macOS: registrazione
+e accesso su webauthn.io, accesso su passkeys.io con il PIN impostato da Chrome. Il firmware upstream, le
+altre schede e gli altri sistemi non sono provati: dillo quando riporti lo stato.

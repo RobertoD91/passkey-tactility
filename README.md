@@ -9,8 +9,11 @@ browser e sistemi operativi, con conferma della presenza utente sullo schermo de
 > Il core è verificato su Linux contro [python-fido2](https://github.com/Yubico/python-fido2)
 > (libreria di riferimento di Yubico) con 50 test automatici; l'app compila per ESP32-S3 ed
 > ESP32-P4 con l'SDK ufficiale 0.8.0-dev e tutti i simboli che importa sono esportati dal
-> firmware patchato, che a sua volta compila (ESP-IDF 6.1, T-Dongle S3). Non è ancora stata
-> provata su una scheda fisica: le segnalazioni sono benvenute.
+> firmware patchato, che a sua volta compila (ESP-IDF 6.1, T-Dongle S3). Su hardware è stata
+> provata sul badge RomHack Camp 2026 (ESP32-S3) con Chrome su macOS: registrazione e accesso su
+> [webauthn.io](https://webauthn.io), accesso su [passkeys.io](https://www.passkeys.io) con il PIN
+> impostato da Chrome al primo uso. Il firmware Tactility upstream, le altre schede e gli altri
+> sistemi e browser non sono ancora stati provati: le segnalazioni sono benvenute.
 
 ## Cosa fa
 
@@ -167,7 +170,8 @@ tt, tt.py                    strumento di build ufficiale di Tactility
 - Un solo trasporto (USB); niente NFC, BLE o `largeBlobs`, niente attestazione con certificato
   del produttore (self attestation, come Solo e simili).
 - La richiesta di presenza utente è visibile solo quando la finestra dell'app è in primo piano.
-- Non testato su hardware reale al momento della prima versione.
+- Su hardware è stata provata solo sul badge RomHack Camp 2026 con Chrome su macOS (vedi lo stato
+  in cima).
 
 ## Licenza
 

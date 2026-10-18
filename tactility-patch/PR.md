@@ -23,6 +23,6 @@ Motivation: a passkey/security-key app ([passkey-tactility](https://github.com/R
 Testing:
 - Firmware builds with ESP-IDF 6.1 for `lilygo-tdongle-s3`.
 - The app that uses the new API builds against the SDK for esp32s3 and esp32p4, and its CTAP2/U2F core is tested against python-fido2 on Linux.
-- Not yet tested on hardware; a test report on a real board will follow.
+- Tested on an ESP32-S3 board, the RomHack Camp 2026 badge. Its firmware carries a copy of Tactility with the same USB HID device driver (ESP-IDF 5.5.2), and this patch was applied to it. With Chrome on macOS: passkey registration and sign-in on webauthn.io, and sign-in on passkeys.io, where Chrome set a PIN on first use. Not yet tested on a board running `main`.
 
 Disclosure: the patch was written with AI assistance (Claude) and reviewed by the submitter.

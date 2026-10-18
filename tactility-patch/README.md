@@ -22,7 +22,8 @@ aggiunge questo al kernel e al driver ESP32, senza toccare le modalità esistent
 La patch è stata generata contro il commit `76434d5bcd6246def97f16f153a0ae159d7145e4` di
 [TactilityProject/Tactility](https://github.com/TactilityProject/Tactility) (ramo `main`, SDK `0.8.0-dev`)
 e il firmware così modificato compila con ESP-IDF 6.1 (verificato per `lilygo-tdongle-s3`).
-Non è ancora stata provata su hardware.
+Su hardware è stata provata solo nella copia di Tactility del badge RomHack Camp 2026 (vedi sotto),
+non ancora su un firmware upstream.
 
 ## Applicarla
 
@@ -74,7 +75,9 @@ Scripts/build-rhc2026-badge-app.sh /percorso/rhc2026-badge/firmware/tactility/re
 ```
 
 Verifiche fatte: il firmware del badge con le due patch compila con ESP-IDF 5.5.2, l'app compila contro
-il suo SDK e tutti i simboli che importa sono esportati da quel firmware.
+il suo SDK e tutti i simboli che importa sono esportati da quel firmware. Sul badge, con Chrome su
+macOS, funzionano registrazione e accesso su webauthn.io e l'accesso su passkeys.io, compresa
+l'impostazione del PIN da parte di Chrome.
 
 Build automatiche:
 - firmware completo (Tactility + Retro-Go, immagine da 16 MB per l'offset `0x0`) e SDK: workflow
