@@ -94,11 +94,14 @@ Richiede ESP-IDF 6.1 (vedi i [requisiti di Tactility](https://github.com/Tactili
 
 ```sh
 cd passkey-tactility
-./tt app build -a esp32s3            # scarica l'SDK 0.8.0-dev dal CDN di Tactility
-./tt host 192.168.1.50               # IP del dispositivo (app Development → server di sviluppo acceso)
-./tt app install
-./tt app run
+./tt app build -p Apps/Passkey -a esp32s3   # scarica l'SDK 0.8.0-dev dal CDN di Tactility
+./tt host 192.168.1.50                      # IP del dispositivo (app Development → server di sviluppo acceso)
+./tt app install -p Apps/Passkey
+./tt app run -p Apps/Passkey
 ```
+
+`tt app` lavora sulla cartella dell'app: dalla radice del repository serve `-p Apps/Passkey`, senza
+fallisce con `manifest.properties not found`.
 
 Il pacchetto `Apps/Passkey/build/robertod.passkey.app` si può anche copiare sulla SD e installare
 dall'app Files. L'app compila contro l'SDK ufficiale grazie alla copia dell'header patchato in

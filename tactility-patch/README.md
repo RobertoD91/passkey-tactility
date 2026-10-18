@@ -35,7 +35,7 @@ idf.py build flash
 ```
 
 Poi genera l'SDK locale con `python Buildscripts/release-current.py` e compila l'app con
-`TACTILITY_SDK_PATH=/percorso/Tactility/release ./tt app build -a esp32s3` (vedi il README principale).
+`TACTILITY_SDK_PATH=/percorso/Tactility/release ./tt app build -p Apps/Passkey -a esp32s3` (vedi il README principale).
 
 ## Fork e pull request
 
